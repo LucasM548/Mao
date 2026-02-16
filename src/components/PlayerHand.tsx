@@ -7,10 +7,18 @@ import { AnimatePresence } from "framer-motion";
 interface PlayerHandProps {
     hand: CardType[];
     selectedIndex: number | null;
+    revealedCardIds: string[];
     onSelectCard: (index: number) => void;
+    onToggleReveal: (cardId: string) => void;
 }
 
-export default function PlayerHand({ hand, selectedIndex, onSelectCard }: PlayerHandProps) {
+export default function PlayerHand({
+    hand,
+    selectedIndex,
+    revealedCardIds,
+    onSelectCard,
+    onToggleReveal,
+}: PlayerHandProps) {
     // Calculate dynamic overlap based on card count
     const maxVisibleWidth = typeof window !== "undefined" ? window.innerWidth - 40 : 800;
     const cardWidth = 72; // 4.5rem = 72px
@@ -36,13 +44,20 @@ export default function PlayerHand({ hand, selectedIndex, onSelectCard }: Player
                             <Card
                                 card={card}
                                 selected={selectedIndex === idx}
+                                revealed={revealedCardIds.includes(card.id)}
                                 onClick={() => onSelectCard(idx)}
+                                onRightClick={() => onToggleReveal(card.id)}
                                 index={idx}
                             />
                         </div>
                     ))}
                 </AnimatePresence>
             </div>
+            {hand.length > 0 && (
+                <p className="text-center text-slate-600 text-[10px] mt-1">
+                    Clic droit sur une carte pour la montrer / cacher
+                </p>
+            )}
         </div>
     );
 }

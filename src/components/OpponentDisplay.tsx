@@ -21,6 +21,7 @@ export default function OpponentDisplay({
     onForceDraw,
 }: OpponentDisplayProps) {
     const cardCount = player.hand.length;
+    const revealedIds = player.revealedCards || [];
 
     return (
         <motion.div
@@ -46,19 +47,26 @@ export default function OpponentDisplay({
                 </span>
             </div>
 
-            {/* Face-down cards */}
+            {/* Cards — revealed ones show face-up */}
             <div className="flex items-center gap-0.5">
-                {Array.from({ length: Math.min(cardCount, 7) }).map((_, i) => (
-                    <div key={i} style={{ marginLeft: i === 0 ? 0 : -6 }}>
-                        <Card faceDown small index={i} />
-                    </div>
-                ))}
-                {cardCount > 7 && (
-                    <span className="text-xs text-slate-400 ml-1">+{cardCount - 7}</span>
+                {player.hand.slice(0, 10).map((card, i) => {
+                    const isRevealed = revealedIds.includes(card.id);
+                    return (
+                        <div key={card.id} style={{ marginLeft: i === 0 ? 0 : -6 }}>
+                            {isRevealed ? (
+                                <Card card={card} small index={i} />
+                            ) : (
+                                <Card faceDown small index={i} />
+                            )}
+                        </div>
+                    );
+                })}
+                {cardCount > 10 && (
+                    <span className="text-xs text-slate-400 ml-1">+{cardCount - 10}</span>
                 )}
             </div>
 
-            {/* Card count badge */}
+            {/* Card count */}
             <span className="text-xs text-slate-400">
                 {cardCount} carte{cardCount !== 1 ? "s" : ""}
             </span>

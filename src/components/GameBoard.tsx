@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { GameState, getOrderedPlayers } from "@/lib/gameService";
-import { sortBySuit, sortByRank } from "@/lib/cards";
+import { sortBySuit, sortByRank, Card as CardType } from "@/lib/cards";
 import * as gameService from "@/lib/gameService";
 import PlayerHand from "./PlayerHand";
 import OpponentDisplay from "./OpponentDisplay";
@@ -22,9 +22,18 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     const [giveMode, setGiveMode] = useState(false);
     const [sortMode, setSortMode] = useState<"suit" | "rank">("suit");
 
+    // Optimistic local overrides
+    const [optimisticHand, setOptimisticHand] = useState<CardType[] | null>(null);
+    const [optimisticDeckCount, setOptimisticDeckCount] = useState<number | null>(null);
+    const optimisticTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const myPlayer = gameState.players[playerId];
     const orderedPlayers = getOrderedPlayers(gameState.players);
     const opponents = orderedPlayers.filter((p) => p.id !== playerId);
+
+    // Use optimistic hand if available, otherwise use Firestore state
+    const displayHand = optimisticHand ?? myPlayer?.hand ?? [];
+    const displayDeckCount = optimisticDeckCount ?? gameState.deck.length;
 
     // Last played info
     const lastPlayerName = gameState.lastPlayedBy
@@ -33,43 +42,91 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
 
     const canUndo = (gameState.actionHistory?.length || 0) > 0;
 
+    // ─── Optimistic helper ──────────────────────────────
+
+    const clearOptimistic = useCallback(() => {
+        if (optimisticTimer.current) clearTimeout(optimisticTimer.current);
+        setOptimisticHand(null);
+        setOptimisticDeckCount(null);
+    }, []);
+
+    const applyOptimistic = useCallback((hand: CardType[], deckCount: number) => {
+        setOptimisticHand(hand);
+        setOptimisticDeckCount(deckCount);
+        // Clear optimistic state after 3s (Firestore should have synced by then)
+        if (optimisticTimer.current) clearTimeout(optimisticTimer.current);
+        optimisticTimer.current = setTimeout(clearOptimistic, 3000);
+    }, [clearOptimistic]);
+
     // ─── Actions ────────────────────────────────────────
 
     const handleDrawCard = useCallback(() => {
+        // Optimistic: instantly show one more card placeholder
+        if (myPlayer && gameState.deck.length > 0) {
+            const fakeCard = gameState.deck[0]; // peek at top card
+            if (fakeCard) {
+                applyOptimistic(
+                    [...myPlayer.hand, fakeCard],
+                    gameState.deck.length - 1
+                );
+            }
+        }
         gameService.drawCard(roomCode, playerId);
-    }, [roomCode, playerId]);
+    }, [roomCode, playerId, myPlayer, gameState.deck, applyOptimistic]);
 
     const handlePlayCard = useCallback(() => {
-        if (selectedCardIndex === null) return;
+        if (selectedCardIndex === null || !myPlayer) return;
+        // Optimistic: remove card from hand
+        const newHand = [...myPlayer.hand];
+        newHand.splice(selectedCardIndex, 1);
+        applyOptimistic(newHand, gameState.deck.length);
         gameService.playCard(roomCode, playerId, selectedCardIndex);
         setSelectedCardIndex(null);
         setGiveMode(false);
-    }, [roomCode, playerId, selectedCardIndex]);
+    }, [roomCode, playerId, selectedCardIndex, myPlayer, gameState.deck.length, applyOptimistic]);
 
     const handleGiveCard = useCallback(
         (toId: string) => {
-            if (selectedCardIndex === null) return;
+            if (selectedCardIndex === null || !myPlayer) return;
+            // Optimistic: remove card from hand
+            const newHand = [...myPlayer.hand];
+            newHand.splice(selectedCardIndex, 1);
+            applyOptimistic(newHand, gameState.deck.length);
             gameService.giveCard(roomCode, playerId, toId, selectedCardIndex);
             setSelectedCardIndex(null);
             setGiveMode(false);
         },
-        [roomCode, playerId, selectedCardIndex]
+        [roomCode, playerId, selectedCardIndex, myPlayer, gameState.deck.length, applyOptimistic]
     );
 
     const handleTakeFromDiscard = useCallback(() => {
+        if (gameState.discard.length > 0 && myPlayer) {
+            const lastCard = gameState.discard[gameState.discard.length - 1];
+            applyOptimistic(
+                [...myPlayer.hand, lastCard],
+                gameState.deck.length
+            );
+        }
         gameService.takeFromDiscard(roomCode, playerId);
-    }, [roomCode, playerId]);
+    }, [roomCode, playerId, myPlayer, gameState.discard, gameState.deck.length, applyOptimistic]);
 
     const handleForceDrawCard = useCallback(
         (targetId: string) => {
+            // Optimistic: update deck count
+            if (gameState.deck.length > 0) {
+                setOptimisticDeckCount(gameState.deck.length - 1);
+                if (optimisticTimer.current) clearTimeout(optimisticTimer.current);
+                optimisticTimer.current = setTimeout(clearOptimistic, 3000);
+            }
             gameService.forceDrawCard(roomCode, targetId);
         },
-        [roomCode]
+        [roomCode, gameState.deck.length, clearOptimistic]
     );
 
     const handleUndo = useCallback(() => {
+        clearOptimistic();
         gameService.undoLastAction(roomCode);
-    }, [roomCode]);
+    }, [roomCode, clearOptimistic]);
 
     const handleSortHand = useCallback(() => {
         if (!myPlayer) return;
@@ -78,14 +135,25 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
         const sorted = newSort === "suit"
             ? sortBySuit(myPlayer.hand)
             : sortByRank(myPlayer.hand);
+        applyOptimistic(sorted, gameState.deck.length);
         gameService.updatePlayerHand(roomCode, playerId, sorted);
         setSelectedCardIndex(null);
-    }, [roomCode, playerId, myPlayer, sortMode]);
+    }, [roomCode, playerId, myPlayer, sortMode, gameState.deck.length, applyOptimistic]);
+
+    const handleToggleReveal = useCallback(
+        (cardId: string) => {
+            gameService.toggleRevealCard(roomCode, playerId, cardId);
+        },
+        [roomCode, playerId]
+    );
 
     const handleSelectCard = useCallback((index: number) => {
         setSelectedCardIndex((prev) => (prev === index ? null : index));
         setGiveMode(false);
     }, []);
+
+    // Clear optimistic state when Firestore syncs
+    // (React will re-render with new gameState, optimistic will expire via timer)
 
     if (!myPlayer) {
         return (
@@ -118,7 +186,7 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-300">{myPlayer.name}</span>
                     <span className="text-xs text-slate-500">
-                        ({myPlayer.hand.length})
+                        ({displayHand.length})
                     </span>
                 </div>
             </motion.div>
@@ -152,7 +220,7 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
             {/* Central area (deck + discard) */}
             <div className="flex-1 flex items-center justify-center">
                 <DeckAndDiscard
-                    deckCount={gameState.deck.length}
+                    deckCount={displayDeckCount}
                     discard={gameState.discard}
                     onDrawCard={handleDrawCard}
                     onTakeFromDiscard={handleTakeFromDiscard}
@@ -178,9 +246,11 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
             {/* Player hand */}
             <div className="flex-shrink-0 border-t border-slate-700/30 bg-slate-900/40 backdrop-blur-sm">
                 <PlayerHand
-                    hand={myPlayer.hand}
+                    hand={displayHand}
                     selectedIndex={selectedCardIndex}
+                    revealedCardIds={myPlayer.revealedCards || []}
                     onSelectCard={handleSelectCard}
+                    onToggleReveal={handleToggleReveal}
                 />
             </div>
         </div>

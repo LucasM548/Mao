@@ -17,7 +17,8 @@ export default function DeckAndDiscard({
     onDrawCard,
     onTakeFromDiscard,
 }: DeckAndDiscardProps) {
-    const visibleDiscard = discard.slice(-3);
+    // Show last 4 cards, most recent last (on top)
+    const visibleDiscard = discard.slice(-4);
 
     return (
         <div className="flex items-center justify-center gap-16">
@@ -29,7 +30,6 @@ export default function DeckAndDiscard({
                     onClick={onDrawCard}
                     className="relative cursor-pointer"
                 >
-                    {/* Stacked deck effect */}
                     {deckCount > 2 && (
                         <div
                             className="absolute top-[3px] left-[3px] w-[4.5rem] h-[6.25rem] rounded-xl card-back-pattern opacity-40"
@@ -55,7 +55,7 @@ export default function DeckAndDiscard({
                 </span>
             </div>
 
-            {/* Discard pile */}
+            {/* Discard pile — stacked, most recent on top */}
             <div className="flex flex-col items-center gap-3">
                 <motion.div
                     whileHover={discard.length > 0 ? { scale: 1.05 } : {}}
@@ -63,28 +63,38 @@ export default function DeckAndDiscard({
                     onClick={discard.length > 0 ? onTakeFromDiscard : undefined}
                     className={`relative w-[4.5rem] h-[6.25rem] ${discard.length > 0 ? "cursor-pointer" : ""
                         }`}
+                    style={{
+                        // Extra space below for stacked cards
+                        marginBottom: visibleDiscard.length > 1 ? `${(visibleDiscard.length - 1) * 6}px` : 0,
+                    }}
                 >
                     <AnimatePresence mode="popLayout">
                         {visibleDiscard.length > 0 ? (
-                            visibleDiscard.map((card, idx) => (
-                                <motion.div
-                                    key={card.id}
-                                    initial={{ scale: 0.5, opacity: 0, y: -40, rotate: -10 }}
-                                    animate={{
-                                        scale: 1,
-                                        opacity: 1,
-                                        y: 0,
-                                        rotate: (idx - 1) * 5,
-                                        x: (idx - 1) * 8,
-                                    }}
-                                    exit={{ scale: 0.5, opacity: 0, y: 40 }}
-                                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                    className={idx < visibleDiscard.length - 1 ? "absolute" : ""}
-                                    style={{ zIndex: idx }}
-                                >
-                                    <Card card={card} />
-                                </motion.div>
-                            ))
+                            visibleDiscard.map((card, idx) => {
+                                const reverseIdx = visibleDiscard.length - 1 - idx;
+                                // Older cards shift down, most recent (last in array) is on top at y=0
+                                return (
+                                    <motion.div
+                                        key={card.id}
+                                        initial={{ scale: 0.5, opacity: 0, y: -40 }}
+                                        animate={{
+                                            scale: 1,
+                                            opacity: reverseIdx === 0 ? 0.3 : reverseIdx === 1 ? 0.5 : reverseIdx === 2 ? 0.75 : 1,
+                                            y: reverseIdx * 6,
+                                            x: reverseIdx * 2,
+                                            rotate: reverseIdx * -2,
+                                        }}
+                                        exit={{ scale: 0.5, opacity: 0, y: 40 }}
+                                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                        className="absolute top-0 left-0"
+                                        style={{
+                                            zIndex: idx, // higher idx = more recent = higher z
+                                        }}
+                                    >
+                                        <Card card={card} />
+                                    </motion.div>
+                                );
+                            })
                         ) : (
                             <div className="w-[4.5rem] h-[6.25rem] rounded-xl border-2 border-dashed border-slate-600 flex items-center justify-center">
                                 <span className="text-slate-500 text-xs">Défausse</span>

@@ -14,6 +14,7 @@ export interface Player {
     name: string;
     hand: Card[];
     order: number;
+    revealedCards: string[]; // IDs of cards visible to others
 }
 
 export interface ActionRecord {
@@ -60,6 +61,7 @@ export async function createOrJoinRoom(
                 name: playerName,
                 hand: [],
                 order: playerCount,
+                revealedCards: [],
             },
         };
         await updateDoc(roomRef, { players: updatedPlayers });
@@ -73,6 +75,7 @@ export async function createOrJoinRoom(
                     name: playerName,
                     hand: [],
                     order: 0,
+                    revealedCards: [],
                 },
             },
             lastPlayedBy: null,
@@ -110,15 +113,13 @@ export function subscribeToRoom(
 
 // ─── Auto-reshuffle helper ──────────────────────────────────────
 
-async function reshuffleDeckIfNeeded(
-    roomRef: ReturnType<typeof doc>,
+function reshuffleDeckIfNeeded(
     data: GameState
-): Promise<{ deck: Card[]; discard: Card[] }> {
+): { deck: Card[]; discard: Card[] } {
     let deck = [...data.deck];
     let discard = [...data.discard];
 
     if (deck.length === 0 && discard.length > 0) {
-        // Keep the top discard card visible, reshuffle the rest
         const topCard = discard.pop()!;
         deck = shuffleDeck(discard);
         discard = [topCard];
@@ -127,13 +128,12 @@ async function reshuffleDeckIfNeeded(
     return { deck, discard };
 }
 
-// ─── Save action to history (keep last 50) ──────────────────────
+// ─── Save action to history (keep last 30 — lighter docs) ───────
 
 function pushAction(history: ActionRecord[], action: ActionRecord): ActionRecord[] {
     const newHistory = [...history, action];
-    // Keep only last 50 actions to avoid Firestore doc size issues
-    if (newHistory.length > 50) {
-        return newHistory.slice(-50);
+    if (newHistory.length > 30) {
+        return newHistory.slice(-30);
     }
     return newHistory;
 }
@@ -147,13 +147,12 @@ export async function startGame(roomCode: string, numDecks?: number): Promise<vo
 
     const data = snap.data() as GameState;
     const deckCount = numDecks || data.numDecks || 1;
-    let deck = shuffleDeck(createMultiDeck(deckCount));
+    const deck = shuffleDeck(createMultiDeck(deckCount));
     const players = { ...data.players };
 
-    // Deal 7 cards to each player
     for (const pid of Object.keys(players)) {
         const hand = deck.splice(0, 7);
-        players[pid] = { ...players[pid], hand };
+        players[pid] = { ...players[pid], hand, revealedCards: [] };
     }
 
     await updateDoc(roomRef, {
@@ -176,7 +175,7 @@ export async function drawCard(
     if (!snap.exists()) return;
 
     const data = snap.data() as GameState;
-    let { deck, discard } = await reshuffleDeckIfNeeded(roomRef, data);
+    const { deck, discard } = reshuffleDeckIfNeeded(data);
     const players = { ...data.players };
 
     if (deck.length === 0) return;
@@ -221,6 +220,11 @@ export async function playCard(
     const card = hand.splice(cardIndex, 1)[0];
     const discard = [...data.discard, card];
 
+    // Remove from revealed if it was revealed
+    const revealedCards = (players[playerId].revealedCards || []).filter(
+        (id) => id !== card.id
+    );
+
     const action: ActionRecord = {
         type: "play",
         playerId,
@@ -231,7 +235,7 @@ export async function playCard(
         previousPlayers: data.players,
     };
 
-    players[playerId] = { ...players[playerId], hand };
+    players[playerId] = { ...players[playerId], hand, revealedCards };
     await updateDoc(roomRef, {
         players,
         discard,
@@ -258,6 +262,11 @@ export async function giveCard(
     const card = fromHand.splice(cardIndex, 1)[0];
     const toHand = [...players[toId].hand, card];
 
+    // Remove from revealed
+    const revealedCards = (players[fromId].revealedCards || []).filter(
+        (id) => id !== card.id
+    );
+
     const action: ActionRecord = {
         type: "give",
         playerId: fromId,
@@ -269,7 +278,7 @@ export async function giveCard(
         previousPlayers: data.players,
     };
 
-    players[fromId] = { ...players[fromId], hand: fromHand };
+    players[fromId] = { ...players[fromId], hand: fromHand, revealedCards };
     players[toId] = { ...players[toId], hand: toHand };
 
     await updateDoc(roomRef, {
@@ -327,7 +336,7 @@ export async function forceDrawCard(
     if (!snap.exists()) return;
 
     const data = snap.data() as GameState;
-    let { deck, discard } = await reshuffleDeckIfNeeded(roomRef, data);
+    const { deck, discard } = reshuffleDeckIfNeeded(data);
     const players = { ...data.players };
 
     if (deck.length === 0) return;
@@ -356,6 +365,33 @@ export async function forceDrawCard(
     });
 }
 
+// ─── Card Reveal Toggle ─────────────────────────────────────────
+
+export async function toggleRevealCard(
+    roomCode: string,
+    playerId: string,
+    cardId: string
+): Promise<void> {
+    const roomRef = doc(db, "rooms", roomCode);
+    const snap = await getDoc(roomRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data() as GameState;
+    const players = { ...data.players };
+    const player = players[playerId];
+    const revealed = player.revealedCards || [];
+
+    const isRevealed = revealed.includes(cardId);
+    players[playerId] = {
+        ...player,
+        revealedCards: isRevealed
+            ? revealed.filter((id) => id !== cardId)
+            : [...revealed, cardId],
+    };
+
+    await updateDoc(roomRef, { players });
+}
+
 // ─── Undo ────────────────────────────────────────────────────────
 
 export async function undoLastAction(roomCode: string): Promise<void> {
@@ -370,7 +406,6 @@ export async function undoLastAction(roomCode: string): Promise<void> {
 
     const lastAction = history.pop()!;
 
-    // Restore previous state
     await updateDoc(roomRef, {
         deck: lastAction.previousDeck || data.deck,
         discard: lastAction.previousDiscard || data.discard,
@@ -380,7 +415,7 @@ export async function undoLastAction(roomCode: string): Promise<void> {
     });
 }
 
-// ─── Sort hand (local — no Firestore update needed) ─────────────
+// ─── Sort hand ──────────────────────────────────────────────────
 
 export async function updatePlayerHand(
     roomCode: string,
