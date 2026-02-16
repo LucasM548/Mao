@@ -433,6 +433,41 @@ export async function updatePlayerHand(
     await updateDoc(roomRef, { players });
 }
 
+// ─── Leave Room ──────────────────────────────────────────────────
+
+export async function leaveRoom(
+    roomCode: string,
+    playerId: string
+): Promise<void> {
+    const roomRef = doc(db, "rooms", roomCode);
+    const snap = await getDoc(roomRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data() as GameState;
+    const players = { ...data.players };
+    const leavingPlayer = players[playerId];
+    if (!leavingPlayer) return;
+
+    // Put the leaving player's cards back into the deck
+    const deck = [...data.deck, ...leavingPlayer.hand];
+    delete players[playerId];
+
+    // Reorder remaining players
+    const ordered = Object.entries(players)
+        .sort(([, a], [, b]) => a.order - b.order)
+        .map(([id, p], idx) => [id, { ...p, order: idx }] as const);
+
+    const reordered: Record<string, Player> = {};
+    for (const [id, p] of ordered) {
+        reordered[id] = p;
+    }
+
+    await updateDoc(roomRef, {
+        players: reordered,
+        deck,
+    });
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────
 
 export function getOrderedPlayers(
@@ -442,3 +477,4 @@ export function getOrderedPlayers(
         .map(([id, player]) => ({ id, player }))
         .sort((a, b) => a.player.order - b.player.order);
 }
+

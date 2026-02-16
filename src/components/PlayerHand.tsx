@@ -21,7 +21,7 @@ export default function PlayerHand({
 }: PlayerHandProps) {
     // Calculate dynamic overlap based on card count
     const maxVisibleWidth = typeof window !== "undefined" ? window.innerWidth - 40 : 800;
-    const cardWidth = 72; // 4.5rem = 72px
+    const cardWidth = 90; // matches Card component width
     const minOverlap = -30;
     const neededWidth = hand.length * cardWidth + (hand.length - 1) * minOverlap;
     const overlap = neededWidth > maxVisibleWidth

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { GameState, getOrderedPlayers } from "@/lib/gameService";
 import { sortBySuit, sortByRank, Card as CardType } from "@/lib/cards";
 import * as gameService from "@/lib/gameService";
@@ -18,6 +19,7 @@ interface GameBoardProps {
 }
 
 export default function GameBoard({ roomCode, playerId, gameState }: GameBoardProps) {
+    const router = useRouter();
     const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
     const [giveMode, setGiveMode] = useState(false);
     const [sortMode, setSortMode] = useState<"suit" | "rank">("suit");
@@ -152,6 +154,12 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
         setGiveMode(false);
     }, []);
 
+    const handleLeave = useCallback(() => {
+        if (!confirm("Quitter la partie ?")) return;
+        gameService.leaveRoom(roomCode, playerId);
+        router.push("/");
+    }, [roomCode, playerId, router]);
+
     // Clear optimistic state when Firestore syncs
     // (React will re-render with new gameState, optimistic will expire via timer)
 
@@ -183,11 +191,18 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
                     lastActionAt={gameState.lastActionAt}
                     lastPlayerName={lastPlayerName}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                     <span className="text-sm text-slate-300">{myPlayer.name}</span>
                     <span className="text-xs text-slate-500">
                         ({displayHand.length})
                     </span>
+                    <button
+                        onClick={handleLeave}
+                        className="px-2.5 py-1.5 bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg hover:bg-red-500/30 transition-all cursor-pointer border border-red-500/30"
+                        title="Quitter la partie"
+                    >
+                        🚪
+                    </button>
                 </div>
             </motion.div>
 

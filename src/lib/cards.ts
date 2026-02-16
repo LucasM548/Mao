@@ -80,3 +80,20 @@ export function sortByRank(cards: Card[]): Card[] {
         return SUIT_ORDER[a.suit] - SUIT_ORDER[b.suit];
     });
 }
+
+// ─── Card images (deckofcardsapi.com) ────────────────────────────
+
+const SUIT_CODE: Record<Suit, string> = {
+    hearts: "H",
+    diamonds: "D",
+    clubs: "C",
+    spades: "S",
+};
+
+export function getCardImageUrl(card: Card): string {
+    // API uses "0" for 10, and single letter for others
+    const rankCode = card.rank === "10" ? "0" : card.rank;
+    return `https://deckofcardsapi.com/static/img/${rankCode}${SUIT_CODE[card.suit]}.png`;
+}
+
+export const CARD_BACK_URL = "https://deckofcardsapi.com/static/img/back.png";
