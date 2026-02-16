@@ -18,6 +18,30 @@ interface GameBoardProps {
     gameState: GameState;
 }
 
+/**
+ * Position opponents around the top/sides like seated at a table.
+ * Current player is always at the bottom (their hand).
+ * Opponents are spread across top and sides based on count.
+ */
+function getOpponentPositions(count: number): { top: number[]; left: number[]; right: number[] } {
+    if (count === 0) return { top: [], left: [], right: [] };
+    if (count === 1) return { top: [0], left: [], right: [] };
+    if (count === 2) return { top: [], left: [0], right: [1] };
+    if (count === 3) return { top: [1], left: [0], right: [2] };
+    if (count === 4) return { top: [1, 2], left: [0], right: [3] };
+    if (count === 5) return { top: [1, 2, 3], left: [0], right: [4] };
+    // 6+: fill top, then sides
+    const leftCount = Math.floor((count - 1) / 3);
+    const rightCount = Math.floor((count - 1) / 3);
+    const topCount = count - leftCount - rightCount;
+    const indices = Array.from({ length: count }, (_, i) => i);
+    return {
+        left: indices.slice(0, leftCount),
+        top: indices.slice(leftCount, leftCount + topCount),
+        right: indices.slice(leftCount + topCount),
+    };
+}
+
 export default function GameBoard({ roomCode, playerId, gameState }: GameBoardProps) {
     const router = useRouter();
     const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
@@ -33,16 +57,17 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     const orderedPlayers = getOrderedPlayers(gameState.players);
     const opponents = orderedPlayers.filter((p) => p.id !== playerId);
 
-    // Use optimistic hand if available, otherwise use Firestore state
     const displayHand = optimisticHand ?? myPlayer?.hand ?? [];
     const displayDeckCount = optimisticDeckCount ?? gameState.deck.length;
 
-    // Last played info
     const lastPlayerName = gameState.lastPlayedBy
         ? gameState.players[gameState.lastPlayedBy]?.name || null
         : null;
 
     const canUndo = (gameState.actionHistory?.length || 0) > 0;
+
+    // Opponent positions
+    const positions = getOpponentPositions(opponents.length);
 
     // ─── Optimistic helper ──────────────────────────────
 
@@ -55,7 +80,6 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     const applyOptimistic = useCallback((hand: CardType[], deckCount: number) => {
         setOptimisticHand(hand);
         setOptimisticDeckCount(deckCount);
-        // Clear optimistic state after 3s (Firestore should have synced by then)
         if (optimisticTimer.current) clearTimeout(optimisticTimer.current);
         optimisticTimer.current = setTimeout(clearOptimistic, 3000);
     }, [clearOptimistic]);
@@ -63,9 +87,8 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     // ─── Actions ────────────────────────────────────────
 
     const handleDrawCard = useCallback(() => {
-        // Optimistic: instantly show one more card placeholder
         if (myPlayer && gameState.deck.length > 0) {
-            const fakeCard = gameState.deck[0]; // peek at top card
+            const fakeCard = gameState.deck[0];
             if (fakeCard) {
                 applyOptimistic(
                     [...myPlayer.hand, fakeCard],
@@ -78,7 +101,6 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
 
     const handlePlayCard = useCallback(() => {
         if (selectedCardIndex === null || !myPlayer) return;
-        // Optimistic: remove card from hand
         const newHand = [...myPlayer.hand];
         newHand.splice(selectedCardIndex, 1);
         applyOptimistic(newHand, gameState.deck.length);
@@ -90,7 +112,6 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     const handleGiveCard = useCallback(
         (toId: string) => {
             if (selectedCardIndex === null || !myPlayer) return;
-            // Optimistic: remove card from hand
             const newHand = [...myPlayer.hand];
             newHand.splice(selectedCardIndex, 1);
             applyOptimistic(newHand, gameState.deck.length);
@@ -104,17 +125,13 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     const handleTakeFromDiscard = useCallback(() => {
         if (gameState.discard.length > 0 && myPlayer) {
             const lastCard = gameState.discard[gameState.discard.length - 1];
-            applyOptimistic(
-                [...myPlayer.hand, lastCard],
-                gameState.deck.length
-            );
+            applyOptimistic([...myPlayer.hand, lastCard], gameState.deck.length);
         }
         gameService.takeFromDiscard(roomCode, playerId);
     }, [roomCode, playerId, myPlayer, gameState.discard, gameState.deck.length, applyOptimistic]);
 
     const handleForceDrawCard = useCallback(
         (targetId: string) => {
-            // Optimistic: update deck count
             if (gameState.deck.length > 0) {
                 setOptimisticDeckCount(gameState.deck.length - 1);
                 if (optimisticTimer.current) clearTimeout(optimisticTimer.current);
@@ -160,8 +177,23 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
         router.push("/");
     }, [roomCode, playerId, router]);
 
-    // Clear optimistic state when Firestore syncs
-    // (React will re-render with new gameState, optimistic will expire via timer)
+    // ─── Render opponent ────────────────────────────────
+
+    const renderOpponent = (idx: number) => {
+        const op = opponents[idx];
+        if (!op) return null;
+        return (
+            <OpponentDisplay
+                key={op.id}
+                playerId={op.id}
+                player={op.player}
+                isLastPlayed={gameState.lastPlayedBy === op.id}
+                isTarget={giveMode}
+                onClick={giveMode ? () => handleGiveCard(op.id) : undefined}
+                onForceDraw={() => handleForceDrawCard(op.id)}
+            />
+        );
+    };
 
     if (!myPlayer) {
         return (
@@ -177,7 +209,7 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-700/30"
+                className="flex items-center justify-between px-4 sm:px-6 py-2 border-b border-slate-700/30"
             >
                 <div className="flex items-center gap-3">
                     <h1 className="text-lg font-bold bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">
@@ -206,40 +238,51 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
                 </div>
             </motion.div>
 
-            {/* Opponents area */}
-            <div className="flex-shrink-0 px-4 sm:px-6 py-3">
-                <div className="flex flex-wrap justify-center gap-3">
-                    {opponents.map((op) => (
-                        <OpponentDisplay
-                            key={op.id}
-                            playerId={op.id}
-                            player={op.player}
-                            isLastPlayed={gameState.lastPlayedBy === op.id}
-                            isTarget={giveMode}
-                            onClick={giveMode ? () => handleGiveCard(op.id) : undefined}
-                            onForceDraw={() => handleForceDrawCard(op.id)}
+            {/* Table area: opponents positioned around deck/discard */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {/* Top opponents */}
+                {positions.top.length > 0 && (
+                    <div className="flex-shrink-0 flex items-start justify-center gap-3 px-4 py-2">
+                        {positions.top.map((idx) => renderOpponent(idx))}
+                    </div>
+                )}
+
+                {/* Middle row: left opponents | deck/discard | right opponents */}
+                <div className="flex-1 flex items-center justify-center gap-4 px-2 min-h-0">
+                    {/* Left opponents */}
+                    {positions.left.length > 0 && (
+                        <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                            {positions.left.map((idx) => renderOpponent(idx))}
+                        </div>
+                    )}
+
+                    {/* Center: deck + discard */}
+                    <div className="flex items-center justify-center">
+                        <DeckAndDiscard
+                            deckCount={displayDeckCount}
+                            discard={gameState.discard}
+                            onDrawCard={handleDrawCard}
+                            onTakeFromDiscard={handleTakeFromDiscard}
                         />
-                    ))}
+                    </div>
+
+                    {/* Right opponents */}
+                    {positions.right.length > 0 && (
+                        <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                            {positions.right.map((idx) => renderOpponent(idx))}
+                        </div>
+                    )}
                 </div>
+
                 {giveMode && (
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-center text-blue-400 text-sm mt-2"
+                        className="text-center text-blue-400 text-sm py-1"
                     >
                         Clique sur un joueur pour lui donner la carte sélectionnée
                     </motion.p>
                 )}
-            </div>
-
-            {/* Central area (deck + discard) */}
-            <div className="flex-1 flex items-center justify-center">
-                <DeckAndDiscard
-                    deckCount={displayDeckCount}
-                    discard={gameState.discard}
-                    onDrawCard={handleDrawCard}
-                    onTakeFromDiscard={handleTakeFromDiscard}
-                />
             </div>
 
             {/* Action bar */}

@@ -3,6 +3,7 @@ import {
     getDoc,
     setDoc,
     updateDoc,
+    deleteDoc,
     onSnapshot,
     Timestamp,
     Unsubscribe,
@@ -451,6 +452,12 @@ export async function leaveRoom(
     // Put the leaving player's cards back into the deck
     const deck = [...data.deck, ...leavingPlayer.hand];
     delete players[playerId];
+
+    // If no players left, delete the room entirely
+    if (Object.keys(players).length === 0) {
+        await deleteDoc(roomRef);
+        return;
+    }
 
     // Reorder remaining players
     const ordered = Object.entries(players)
