@@ -1,26 +1,103 @@
 @import "tailwindcss";
 
+@theme {
+  --color-felt-900: #0a1a0f;
+  --color-felt-800: #0f2818;
+  --color-felt-700: #163520;
+  --color-felt-600: #1e4a2c;
+  --color-gold-400: #fbbf24;
+  --color-gold-500: #f59e0b;
+  --color-gold-600: #d97706;
+  --color-card-red: #ef4444;
+  --color-card-white: #f8fafc;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background: linear-gradient(135deg, #0a0f0a 0%, #0f2818 40%, #0a1a0f 100%);
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+}
+
+/* Card styles */
+.card-shadow {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 2px 4px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.card-glow {
+  box-shadow:
+    0 0 15px rgba(251, 191, 36, 0.3),
+    0 0 30px rgba(251, 191, 36, 0.1);
+}
+
+.card-back-pattern {
+  background: repeating-conic-gradient(
+    #1e3a5f 0% 25%,
+    #162d4d 0% 50%
+  ) 50% / 12px 12px;
+  border: 2px solid #2563eb;
+}
+
+/* Felt table texture */
+.felt-texture {
+  background-image: radial-gradient(
+    ellipse at center,
+    rgba(34, 197, 94, 0.08) 0%,
+    transparent 70%
+  );
+}
+
+/* Shine effect for buttons */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 60%
+  );
+  animation: shine 3s infinite;
+}
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Pulse for active turn */
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+}
+.pulse-turn {
+  animation: pulse-gold 2s infinite;
 }
