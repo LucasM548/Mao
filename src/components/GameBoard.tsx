@@ -204,18 +204,24 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
     }
 
     return (
-        <div className="h-screen flex flex-col felt-texture overflow-hidden">
+        <div className="h-screen flex flex-col felt-pattern overflow-hidden">
+            {/* Ambient background */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
+                <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-gold-400/5 rounded-full blur-3xl" />
+            </div>
+
             {/* Header */}
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between px-4 sm:px-6 py-2 border-b border-slate-700/30"
+                className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-700/30 bg-slate-900/50 backdrop-blur-sm relative z-10"
             >
-                <div className="flex items-center gap-3">
-                    <h1 className="text-lg font-bold bg-gradient-to-r from-gold-400 to-gold-600 bg-clip-text text-transparent">
+                <div className="flex items-center gap-4">
+                    <h1 className="text-xl font-bold text-shimmer">
                         MAO
                     </h1>
-                    <span className="text-xs text-slate-500 font-mono bg-slate-800/50 px-2 py-1 rounded hidden sm:inline">
+                    <span className="text-xs text-slate-400 font-mono bg-slate-800/60 px-3 py-1.5 rounded-full border border-slate-700/30 hidden sm:inline">
                         {roomCode}
                     </span>
                 </div>
@@ -224,40 +230,46 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
                     lastPlayerName={lastPlayerName}
                 />
                 <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-300">{myPlayer.name}</span>
-                    <span className="text-xs text-slate-500">
-                        ({displayHand.length})
-                    </span>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-full border border-slate-700/30">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-gold-600 flex items-center justify-center text-sm font-bold text-slate-900">
+                            {myPlayer.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm text-slate-200">{myPlayer.name}</span>
+                        <span className="text-xs text-gold-400 bg-gold-400/10 px-2 py-0.5 rounded">
+                            {displayHand.length}
+                        </span>
+                    </div>
                     <button
                         onClick={handleLeave}
-                        className="px-2.5 py-1.5 bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg hover:bg-red-500/30 transition-all cursor-pointer border border-red-500/30"
+                        className="px-3 py-2 bg-red-500/20 text-red-400 text-sm font-semibold rounded-lg hover:bg-red-500/30 transition-all cursor-pointer border border-red-500/30"
                         title="Quitter la partie"
                     >
-                        🚪
+                        ✕
                     </button>
                 </div>
             </motion.div>
 
             {/* Table area: opponents positioned around deck/discard */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
                 {/* Top opponents */}
                 {positions.top.length > 0 && (
-                    <div className="flex-shrink-0 flex items-start justify-center gap-3 px-4 py-2">
+                    <div className="flex-shrink-0 flex items-start justify-center gap-4 px-4 py-3">
                         {positions.top.map((idx) => renderOpponent(idx))}
                     </div>
                 )}
 
                 {/* Middle row: left opponents | deck/discard | right opponents */}
-                <div className="flex-1 flex items-center justify-center gap-4 px-2 min-h-0">
+                <div className="flex-1 flex items-center justify-center gap-6 px-4 min-h-0">
                     {/* Left opponents */}
                     {positions.left.length > 0 && (
-                        <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                        <div className="flex flex-col items-center gap-4 flex-shrink-0">
                             {positions.left.map((idx) => renderOpponent(idx))}
                         </div>
                     )}
 
-                    {/* Center: deck + discard */}
-                    <div className="flex items-center justify-center">
+                    {/* Center: deck + discard with glow effect */}
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-green-500/10 rounded-full blur-2xl scale-150" />
                         <DeckAndDiscard
                             deckCount={displayDeckCount}
                             discard={gameState.discard}
@@ -268,7 +280,7 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
 
                     {/* Right opponents */}
                     {positions.right.length > 0 && (
-                        <div className="flex flex-col items-center gap-3 flex-shrink-0">
+                        <div className="flex flex-col items-center gap-4 flex-shrink-0">
                             {positions.right.map((idx) => renderOpponent(idx))}
                         </div>
                     )}
@@ -276,9 +288,9 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
 
                 {giveMode && (
                     <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-center text-blue-400 text-sm py-1"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center text-blue-400 text-sm py-2 bg-blue-500/10 border-y border-blue-500/20"
                     >
                         Clique sur un joueur pour lui donner la carte sélectionnée
                     </motion.p>
@@ -286,23 +298,25 @@ export default function GameBoard({ roomCode, playerId, gameState }: GameBoardPr
             </div>
 
             {/* Action bar */}
-            <ActionBar
-                hasSelectedCard={selectedCardIndex !== null}
-                onPlayCard={handlePlayCard}
-                showGiveMode={giveMode}
-                onToggleGiveMode={() => setGiveMode(!giveMode)}
-                onCancelSelection={() => {
-                    setSelectedCardIndex(null);
-                    setGiveMode(false);
-                }}
-                onUndo={handleUndo}
-                onSortHand={handleSortHand}
-                sortMode={sortMode}
-                canUndo={canUndo}
-            />
+            <div className="relative z-10">
+                <ActionBar
+                    hasSelectedCard={selectedCardIndex !== null}
+                    onPlayCard={handlePlayCard}
+                    showGiveMode={giveMode}
+                    onToggleGiveMode={() => setGiveMode(!giveMode)}
+                    onCancelSelection={() => {
+                        setSelectedCardIndex(null);
+                        setGiveMode(false);
+                    }}
+                    onUndo={handleUndo}
+                    onSortHand={handleSortHand}
+                    sortMode={sortMode}
+                    canUndo={canUndo}
+                />
+            </div>
 
             {/* Player hand */}
-            <div className="flex-shrink-0 border-t border-slate-700/30 bg-slate-900/40 backdrop-blur-sm">
+            <div className="flex-shrink-0 border-t border-slate-700/30 bg-slate-900/60 backdrop-blur-md">
                 <PlayerHand
                     hand={displayHand}
                     selectedIndex={selectedCardIndex}

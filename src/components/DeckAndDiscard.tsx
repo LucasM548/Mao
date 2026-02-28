@@ -21,7 +21,7 @@ export default function DeckAndDiscard({
     const visibleDiscard = discard.slice(-4);
 
     return (
-        <div className="flex items-center justify-center gap-12">
+        <div className="flex items-center justify-center gap-16">
             {/* Deck (draw pile) */}
             <div className="flex flex-col items-center gap-3">
                 <motion.div
@@ -32,27 +32,28 @@ export default function DeckAndDiscard({
                 >
                     {deckCount > 2 && (
                         <div
-                            className="absolute top-[3px] left-[3px] w-[90px] h-[126px] rounded-lg card-back-pattern opacity-40"
+                            className="absolute top-[4px] left-[4px] w-[90px] h-[126px] rounded-lg card-back-pattern opacity-40"
                             style={{ border: "1px solid rgba(100,116,139,0.2)" }}
                         />
                     )}
                     {deckCount > 1 && (
                         <div
-                            className="absolute top-[1.5px] left-[1.5px] w-[90px] h-[126px] rounded-lg card-back-pattern opacity-60"
+                            className="absolute top-[2px] left-[2px] w-[90px] h-[126px] rounded-lg card-back-pattern opacity-60"
                             style={{ border: "1px solid rgba(100,116,139,0.2)" }}
                         />
                     )}
                     {deckCount > 0 ? (
                         <Card faceDown />
                     ) : (
-                        <div className="w-[90px] h-[126px] rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center">
-                            <span className="text-slate-500 text-xs">Vide</span>
+                        <div className="w-[90px] h-[126px] rounded-xl border-2 border-dashed border-slate-600/50 flex items-center justify-center bg-slate-800/30">
+                            <span className="text-slate-500 text-xs font-medium">Vide</span>
                         </div>
                     )}
                 </motion.div>
-                <span className="text-xs text-slate-400 font-medium">
-                    Pioche ({deckCount})
-                </span>
+                <div className="flex flex-col items-center">
+                    <span className="text-sm text-slate-300 font-semibold">Pioche</span>
+                    <span className="text-xs text-slate-500">{deckCount} cartes</span>
+                </div>
             </div>
 
             {/* Discard pile — spread horizontally, most recent on top/right */}
@@ -93,15 +94,16 @@ export default function DeckAndDiscard({
                                 );
                             })
                         ) : (
-                            <div className="w-[90px] h-[126px] rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center">
-                                <span className="text-slate-500 text-xs">Défausse</span>
+                            <div className="w-[90px] h-[126px] rounded-xl border-2 border-dashed border-slate-600/50 flex items-center justify-center bg-slate-800/30">
+                                <span className="text-slate-500 text-xs font-medium">Défausse</span>
                             </div>
                         )}
                     </AnimatePresence>
                 </motion.div>
-                <span className="text-xs text-slate-400 font-medium">
-                    Défausse ({discard.length})
-                </span>
+                <div className="flex flex-col items-center">
+                    <span className="text-sm text-slate-300 font-semibold">Défausse</span>
+                    <span className="text-xs text-slate-500">{discard.length} cartes</span>
+                </div>
             </div>
         </div>
     );

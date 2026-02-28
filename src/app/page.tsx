@@ -27,30 +27,38 @@ export default function LobbyPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center felt-texture p-4">
-      {/* Background decorative cards */}
+    <div className="min-h-screen flex items-center justify-center felt-texture p-4 relative overflow-hidden">
+      {/* Animated background cards */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-20 h-28 rounded-lg card-back-pattern opacity-10"
-            initial={{ rotate: 0, y: 0 }}
+            className="absolute w-24 h-36 rounded-xl card-back-pattern opacity-10"
+            initial={{ rotate: 0, y: 0, x: 0 }}
             animate={{
-              rotate: [0, 5, -5, 0],
-              y: [0, -10, 10, 0],
+              rotate: [0, 8, -8, 0],
+              y: [0, -15, 15, 0],
+              x: [0, 5, -5, 0],
             }}
             transition={{
-              duration: 8 + i * 2,
+              duration: 10 + i * 2,
               repeat: Infinity,
               ease: "easeInOut",
+              delay: i * 0.5,
             }}
             style={{
-              top: `${15 + i * 15}%`,
-              left: `${5 + i * 16}%`,
-              transform: `rotate(${-30 + i * 12}deg)`,
+              top: `${10 + i * 12}%`,
+              left: `${3 + i * 13}%`,
+              transform: `rotate(${-35 + i * 10}deg)`,
             }}
           />
         ))}
+      </div>
+
+      {/* Ambient light effects */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-400/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
       </div>
 
       <motion.div
@@ -60,19 +68,20 @@ export default function LobbyPage() {
         className="relative z-10 w-full max-w-md"
       >
         {/* Logo / Title */}
-        <div className="text-center mb-10">
-          <motion.h1
-            className="text-6xl font-extrabold tracking-tight"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+        <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="relative inline-block mb-4"
           >
-            <span className="bg-gradient-to-r from-gold-400 via-yellow-300 to-gold-600 bg-clip-text text-transparent">
+            <div className="absolute inset-0 bg-gold-400/20 blur-2xl rounded-full" />
+            <h1 className="relative text-7xl font-black tracking-wider text-shimmer">
               MAO
-            </span>
-          </motion.h1>
+            </h1>
+          </motion.div>
           <motion.p
-            className="text-slate-400 mt-2 text-sm tracking-widest uppercase"
+            className="text-slate-400 text-sm tracking-[0.3em] uppercase"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -80,15 +89,27 @@ export default function LobbyPage() {
             Sandbox Multijoueur
           </motion.p>
           <motion.div
-            className="flex justify-center gap-3 mt-4 text-2xl"
+            className="flex justify-center gap-4 mt-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <span className="text-card-red">♥</span>
-            <span className="text-card-white">♠</span>
-            <span className="text-card-red">♦</span>
-            <span className="text-card-white">♣</span>
+            {[
+              { suit: "♥", color: "text-red-500" },
+              { suit: "♠", color: "text-slate-200" },
+              { suit: "♦", color: "text-red-500" },
+              { suit: "♣", color: "text-slate-200" },
+            ].map((item, i) => (
+              <motion.div
+                key={item.suit}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 + i * 0.1 }}
+                className={`text-3xl ${item.color}`}
+              >
+                {item.suit}
+              </motion.div>
+            ))}
           </motion.div>
         </div>
 
@@ -97,12 +118,12 @@ export default function LobbyPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-gradient-to-b from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 card-shadow"
+          className="glass-card rounded-2xl p-8"
         >
-          <div className="space-y-5">
+          <div className="space-y-6">
             {/* Player Name */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 Ton pseudo
               </label>
               <input
@@ -111,13 +132,13 @@ export default function LobbyPage() {
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="Ex: Lucas"
                 maxLength={20}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold-400/60 focus:ring-1 focus:ring-gold-400/30 transition-all"
+                className="w-full px-5 py-4 bg-slate-900/60 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold-400/60 focus:ring-2 focus:ring-gold-400/20 transition-all text-lg"
               />
             </div>
 
             {/* Room Code */}
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 Code de partie
               </label>
               <input
@@ -126,7 +147,7 @@ export default function LobbyPage() {
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="Ex: MAO123"
                 maxLength={10}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold-400/60 focus:ring-1 focus:ring-gold-400/30 transition-all font-mono tracking-widest text-center text-lg"
+                className="w-full px-5 py-4 bg-slate-900/60 border border-slate-600/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-gold-400/60 focus:ring-2 focus:ring-gold-400/20 transition-all font-mono tracking-widest text-center text-xl"
                 onKeyDown={(e) => e.key === "Enter" && handleJoin()}
               />
             </div>
@@ -137,28 +158,42 @@ export default function LobbyPage() {
               whileTap={{ scale: 0.98 }}
               onClick={handleJoin}
               disabled={!playerName.trim() || !roomCode.trim() || isJoining}
-              className="btn-shine w-full py-3.5 bg-gradient-to-r from-gold-500 to-gold-600 text-slate-900 font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:from-gold-400 hover:to-gold-500 cursor-pointer"
+              className="btn-shine w-full py-4 bg-gradient-to-r from-gold-500 via-gold-400 to-gold-600 text-slate-900 font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:shadow-lg hover:shadow-gold-400/30 cursor-pointer text-lg"
             >
               {isJoining ? (
-                <span className="flex items-center justify-center gap-2">
+                <span className="flex items-center justify-center gap-3">
                   <motion.span
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="text-xl"
                   >
                     ♠
                   </motion.span>
-                  Connexion...
+                  <span>Connexion...</span>
                 </span>
               ) : (
-                "Rejoindre la table"
+                <span className="flex items-center justify-center gap-2">
+                  <span>🎴</span>
+                  <span>Rejoindre la table</span>
+                </span>
               )}
             </motion.button>
           </div>
 
-          <p className="text-center text-slate-500 text-xs mt-5">
+          <p className="text-center text-slate-500 text-xs mt-6">
             Entre le même code qu&apos;un ami pour rejoindre sa table.
           </p>
         </motion.div>
+
+        {/* Decorative footer */}
+        <motion.p
+          className="text-center text-slate-600 text-xs mt-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+        >
+          Un jeu de cartes déjanté
+        </motion.p>
       </motion.div>
     </div>
   );

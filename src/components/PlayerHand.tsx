@@ -29,7 +29,7 @@ export default function PlayerHand({
         : minOverlap;
 
     return (
-        <div className="py-4 px-4 overflow-x-auto">
+        <div className="py-5 px-4 overflow-x-auto">
             <div className="flex items-end justify-center" style={{ minHeight: "7rem" }}>
                 <AnimatePresence>
                     {hand.map((card, idx) => (
@@ -54,7 +54,7 @@ export default function PlayerHand({
                 </AnimatePresence>
             </div>
             {hand.length > 0 && (
-                <p className="text-center text-slate-600 text-[10px] mt-1">
+                <p className="text-center text-slate-500 text-[10px] mt-2">
                     Clic droit sur une carte pour la montrer / cacher
                 </p>
             )}

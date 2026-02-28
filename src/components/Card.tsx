@@ -41,9 +41,9 @@ export default function Card({
                 exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ delay: index * 0.03 }}
                 onClick={onClick}
-                className={`${w} ${h} rounded-lg flex-shrink-0 overflow-hidden`}
+                className={`${w} ${h} rounded-lg flex-shrink-0 overflow-hidden relative`}
                 style={{
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1)",
                     cursor: onClick ? "pointer" : "default",
                 }}
             >
@@ -56,6 +56,8 @@ export default function Card({
                     draggable={false}
                     unoptimized
                 />
+                {/* Card edge highlight */}
+                <div className="absolute inset-0 rounded-lg border border-white/5" />
             </motion.div>
         );
     }
@@ -69,29 +71,29 @@ export default function Card({
             animate={{
                 scale: 1,
                 opacity: 1,
-                y: selected ? -16 : 0,
+                y: selected ? -20 : 0,
             }}
             exit={{ scale: 0.8, opacity: 0, y: -20 }}
-            whileHover={onClick ? { y: -8, scale: 1.05 } : {}}
+            whileHover={onClick ? { y: -12, scale: 1.08 } : {}}
+            whileTap={onClick ? { scale: 0.95 } : {}}
             transition={{ type: "spring", stiffness: 300, damping: 25, delay: index * 0.03 }}
             onClick={onClick}
             onContextMenu={onRightClick ? (e) => {
                 e.preventDefault();
                 onRightClick();
             } : undefined}
-            className={`${w} ${h} rounded-lg flex-shrink-0 select-none relative overflow-hidden ${onClick ? "cursor-pointer" : ""
-                }`}
+            className={`${w} ${h} rounded-lg flex-shrink-0 select-none relative overflow-hidden ${onClick ? "cursor-pointer" : ""}`}
             style={{
                 border: revealed
                     ? "2px solid #3b82f6"
                     : selected
                         ? "2px solid #d4a34a"
-                        : "1px solid rgba(0,0,0,0.1)",
+                        : "1px solid rgba(255,255,255,0.1)",
                 boxShadow: revealed
-                    ? "0 0 12px rgba(59,130,246,0.5), 0 4px 12px rgba(0,0,0,0.15)"
+                    ? "0 0 20px rgba(59,130,246,0.5), 0 8px 20px rgba(0,0,0,0.3)"
                     : selected
-                        ? "0 0 12px rgba(212,163,74,0.4), 0 4px 12px rgba(0,0,0,0.15)"
-                        : "0 2px 8px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08)",
+                        ? "0 0 20px rgba(212,163,74,0.5), 0 8px 20px rgba(0,0,0,0.3)"
+                        : "0 4px 12px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1)",
             }}
         >
             <Image
@@ -104,17 +106,20 @@ export default function Card({
                 unoptimized
             />
 
+            {/* Card shine effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none rounded-lg" />
+
             {/* Revealed indicator */}
             {revealed && (
                 <div
-                    className="absolute top-0 right-0 bg-blue-500 text-white rounded-bl-lg flex items-center justify-center"
+                    className="absolute top-0 right-0 bg-blue-500 text-white rounded-bl-lg flex items-center justify-center shadow-lg"
                     style={{
-                        width: small ? "14px" : "20px",
-                        height: small ? "14px" : "20px",
-                        fontSize: small ? "8px" : "11px",
+                        width: small ? "16px" : "24px",
+                        height: small ? "16px" : "24px",
+                        fontSize: small ? "9px" : "12px",
                     }}
                 >
-                    👁
+                    <span className="font-bold">R</span>
                 </div>
             )}
         </motion.div>
